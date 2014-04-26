@@ -2,9 +2,9 @@
 
 ###Student Information
 **Developer 1**:
-  + Name: Tommy Trojan
-  + USC Email: ttrojan@usc.edu
-  + USC ID: 0123456789
+  + Name: Kevin Koeller
+  + USC Email: koeller@usc.edu
+  + USC ID: 6934131011
 
 **Developer 2**:
   + Name: Wilson Yeh
