@@ -2,9 +2,9 @@
 
 ###Student Information
 **Developer 1**:
-  + Name: William Alexander
-  + USC Email: walexand@usc.edu
-  + USC ID: 6041702907
+  + Name: Kevin Koeller
+  + USC Email: koeller@usc.edu
+  + USC ID: 6934131011
 
 **Developer 2**:
   + Name: Wilson Yeh
