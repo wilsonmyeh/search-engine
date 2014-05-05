@@ -99,7 +99,7 @@ int main(int argc, char *argv[]){
     for(int j=0; j<bidVec.size(); j++) {
      for(int i=0;i<numLines;i++) {
         cb = comp[i];
-         int bidArr[numLines];
+         int bidArr[bidVec.size()];
         if(cb.keyword == key && cb.bid == bidArr[j]) {
             compTempVec.push_back(cb.company);
         }
