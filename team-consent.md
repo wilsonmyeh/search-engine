@@ -1,1 +1,0 @@
-We have contacted each other and begun working as a group.
