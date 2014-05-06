@@ -17,7 +17,6 @@ OBJECTS_DIR = bin
 
 # Input
 HEADERS += src/mainwin.h \
-           src/mergesortkevin.h \
            src/msort.h \
            src/pagerank.h \
            src/pagewin.h \
