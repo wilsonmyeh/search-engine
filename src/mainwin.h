@@ -17,6 +17,14 @@
 
 #include "msort.h"
 #include "pagewin.h"
+#include "mergesortkevin.h"
+
+struct comp_bid {
+    string keyword;
+    double bid;
+    string company;
+    int hits;
+};
 
 struct AlphaComp {
 	bool operator()(const WebPage* lhs, const WebPage* rhs)
@@ -32,15 +40,29 @@ struct RankComp {
 	}
 };
 
+ struct SortBids {
+ bool operator() (const comp_bid* lhs, const comp_bid* rhs) 
+    { 
+    	if(lhs->bid<=rhs->bid)
+    	 return true;
+      else if(lhs->bid>=rhs->bid)
+        return false;
+      else if(lhs->company<=rhs->company)
+        return true;
+      return false;
+    }
+ };
+
+
+
 class MainWin : public QMainWindow
 {
 	Q_OBJECT
 
 	public:
-		MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap, QWidget *parent = 0);
+		MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap, map<string,vector<comp_bid>* > & cMap, QWidget *parent = 0);
 		~MainWin();
-		void toLowerCase(string & s);
-		bool isValid(string & s) const;
+		
 
 	private slots:
 		void sortByRank();
@@ -51,8 +73,13 @@ class MainWin : public QMainWindow
 		void doSearchOR();
 		void doSearchAND();
 		void openResult(QListWidgetItem* item);
+		void adClicked(QListWidgetItem* item);
 		
 	private:
+		void toLowerCase(string & s);
+		bool isValid(string & s) const;
+		void displayAds(Set<string> & input);
+
 		QPushButton * btnQuit;
 		QPushButton * btnAbout;
 		QPushButton * btnSearchWord;
@@ -66,6 +93,7 @@ class MainWin : public QMainWindow
 		QLineEdit	* txtAND;
 
 		QListWidget * resultList;
+		QListWidget * adList;
 		
 		QGridLayout	* searchLayout;
 		QWidget 	* window;
@@ -73,6 +101,9 @@ class MainWin : public QMainWindow
 		map<string,WebPage*> & fileLookup;
 		map<string,Set<WebPage*> > & wordMap;
 		list<WebPage*> searchResults;
+		map<string,vector<comp_bid>* > compMap;
+
+		map<string,comp_bid*> curAds;
 
 		PageWin 	* pWin;
 };

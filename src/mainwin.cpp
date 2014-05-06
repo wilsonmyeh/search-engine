@@ -3,8 +3,8 @@
 
 using namespace std;
 
-MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap, QWidget *parent) :
-				QMainWindow(parent), fileLookup(fMap),wordMap(wMap),pWin(NULL)
+MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap, map<string,vector<comp_bid>* > & cMap, QWidget *parent) :
+				QMainWindow(parent), fileLookup(fMap),wordMap(wMap),compMap(cMap),pWin(NULL)
 {
 	btnQuit			= new QPushButton("&Quit");
 	btnAbout		= new QPushButton("&About");
@@ -19,6 +19,7 @@ MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap,
 	txtAND 		= new QLineEdit;
 
 	resultList = new QListWidget;
+	adList = new QListWidget;
 
 	searchLayout = new QGridLayout;
 
@@ -37,6 +38,7 @@ MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap,
 	btnSortRank->setFixedSize(250,25);
 
 	resultList->setFixedSize(500,300);
+	adList->setFixedSize(250,250);
 
 
 	searchLayout->addWidget(txtWord,0,0,Qt::AlignLeft);
@@ -49,8 +51,9 @@ MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap,
 	searchLayout->addWidget(btnSortName,3,0,Qt::AlignLeft);
 	searchLayout->addWidget(btnSortRank,3,0,Qt::AlignRight);
 	searchLayout->addWidget(resultList,4,0,Qt::AlignJustify);
+	searchLayout->addWidget(adList,5,0,Qt::AlignLeft);
 
-	searchLayout->addWidget(btnAbout,5,0,Qt::AlignLeft);
+	searchLayout->addWidget(btnAbout,5,0,Qt::AlignRight);
 	searchLayout->addWidget(btnQuit,5,0,Qt::AlignRight);
 
 	connect(btnAbout,		SIGNAL(clicked()),	this, SLOT(showAbout()));
@@ -62,6 +65,7 @@ MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap,
 	connect(btnSortName,	SIGNAL(clicked()),	this, SLOT(sortByName()));
 
 	connect(resultList,		SIGNAL(itemDoubleClicked(QListWidgetItem*)),	this,	SLOT(openResult(QListWidgetItem*)));
+	connect(adList,			SIGNAL(itemClicked(QListWidgetItem*)),			this,	SLOT(adClicked(QListWidgetItem*)));
 }
 
 MainWin::~MainWin()
@@ -88,6 +92,8 @@ MainWin::~MainWin()
 
 void MainWin::doSearchWord()
 {
+	Set<string> inputWords;
+
 	Set<WebPage*> results;
 	string query = txtWord->text().toStdString();
 	toLowerCase(query);
@@ -111,10 +117,15 @@ void MainWin::doSearchWord()
 			searchResults.push_back(it);
 		}
 	}
+
+	inputWords.insert(query);
+	displayAds(inputWords);
 }
 
 void MainWin::doSearchOR()
 {
+	Set<string> inputWords;
+
 	Set<WebPage*> results;
 	string query = txtOR->text().toStdString();
 	toLowerCase(query);
@@ -132,6 +143,8 @@ void MainWin::doSearchOR()
 	{
 		try {	results = results.setUnion(wordMap.at(s));		}
 		catch(exception e) { }
+
+		inputWords.insert(s);
 		ss >> s;
 	}
 
@@ -146,10 +159,14 @@ void MainWin::doSearchOR()
 			searchResults.push_back(it);
 		}
 	}
+
+	displayAds(inputWords);
 }
 
 void MainWin::doSearchAND()
 {
+	Set<string> inputWords;
+
 	Set<WebPage*> results;
 	string query = txtAND->text().toStdString();
 	toLowerCase(query);
@@ -169,6 +186,8 @@ void MainWin::doSearchAND()
 	{
 		try {	results = results.setIntersection(wordMap.at(s));	} 
 		catch(exception e) {	results = Set<WebPage*>();	}
+
+		inputWords.insert(s);
 		ss >> s;
 	}
 
@@ -181,6 +200,37 @@ void MainWin::doSearchAND()
 			searchResults.clear();
 			resultList->addItem(QString::fromStdString(it->filename()));
 			searchResults.push_back(it);
+		}
+	}
+
+	displayAds(inputWords);
+
+}
+
+void MainWin::displayAds(Set<string> & input)
+{
+	list<comp_bid*> bids; 
+	for(auto & it : input)
+	{
+		if(compMap.find(it) == compMap.end())
+			continue;
+		vector<comp_bid>* temp = compMap[it];
+		for(auto & comp : *temp)
+			bids.push_back(&comp);
+	}
+
+	adList->clear();
+	curAds.clear();
+
+	SortBids struc;
+	merge_sort(bids,struc);
+	Set<string> compNames;
+	for(auto & it : bids)
+	{
+		if(compNames.insert(it->company).second)
+		{
+			curAds[it->company] = it;
+			adList->addItem(QString::fromStdString(it->company));
 		}
 	}
 
@@ -216,6 +266,14 @@ void MainWin::openResult(QListWidgetItem* item)
 	string page = item->text().toStdString();
 	pWin = new PageWin(fileLookup,*fileLookup.at(page));
 	pWin->show();
+}
+
+void MainWin::adClicked(QListWidgetItem* item)
+{
+	string ad = item->text().toStdString();
+	QMessageBox::information(this, QString::fromStdString(ad), QString::fromStdString("Welcome to " + ad + "!"));
+	curAds[ad]->hits++; 
+	
 }
 
 void MainWin::toLowerCase(string & s)

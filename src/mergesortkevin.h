@@ -3,26 +3,8 @@
  
  using namespace std;
  
- struct AlphaStrComp {
- bool operator() (const string& lhs, const string& rhs) 
-    { 
-    	if(lhs<=rhs)
-    	 return true;
-        else
-        	return false;
-    }
- };
- 
-    //compares page ranks using integers
-   struct IntComp {
-     bool operator() (const int lhs, const int rhs) 
-    { 
-      if(lhs>rhs)
-    	 return true;
-        else
-        	return false;
-    }
-   };
+ //sorts comp_bid first by bid val second by alphanumeric
+
  
  template <class T, class Comparator>
  bool DoCompare(const T& obj1, const T& obj2, Comparator comp)
