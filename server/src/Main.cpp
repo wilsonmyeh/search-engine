@@ -201,15 +201,14 @@ int main(int argc, char* argv[])
 	socklen_t sin_size;
 	struct sockaddr_storage client_addr;
 
-	pthread_t* gui;
-	if(pthread_create(gui,NULL,displayGUI,(void*)&serverip) < 0) {
+	pthread_t gui;
+	if(pthread_create(&gui,NULL,displayGUI,(void*)&serverip) < 0) {
 		perror("gui thread");
 		return 1;
 	}
 
 
-
-	vector<pthread_t*> threads; //C++ doesn't have threadpools ;_;
+	vector<pthread_t> threads; //C++ doesn't have threadpools ;_;
 	while(serverip != "NULL") { //accept() loop until mainwin closes
 		sin_size = sizeof client_addr;
 		sockcli_fd = accept(socklis_fd, (struct sockaddr*)&client_addr, &sin_size);
@@ -220,8 +219,8 @@ int main(int argc, char* argv[])
 
 		inet_ntop(client_addr.ss_family, get_in_addr((struct sockaddr*)&client_addr), s, sizeof s);
 		cout << "Connection from " << s << endl;
-		pthread_t* temp;
-		if(pthread_create(temp,NULL,newClient,(void*)&sockcli_fd) < 0) {
+		pthread_t temp;
+		if(pthread_create(&temp,NULL,newClient,(void*)&sockcli_fd) < 0) {
 			perror("thread");
 			continue;
 		}
@@ -246,6 +245,9 @@ void *displayGUI(void* serverip)
 {
 	int argc = 1;
 	char* argv[1];
+	argv[0] = new char[5];
+	memset(argv[0],'a',5);
+	
 	QApplication app(argc, argv);  
 
 	MainWin window(*(string*)serverip);
