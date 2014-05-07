@@ -188,7 +188,9 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	string serverip = servinfo->ai_addr->sa_data;
+	
+	inet_ntop(p->ai_family, get_in_addr((struct sockaddr*)&p), s, sizeof s);
+	string serverip = s;
 
 	freeaddrinfo(servinfo); //Binded and done!
 
@@ -210,13 +212,13 @@ int main(int argc, char* argv[])
 
 	vector<pthread_t> threads; //C++ doesn't have threadpools ;_;
 	while(serverip != "NULL") { //accept() loop until mainwin closes
+		cout << serverip << endl;
 		sin_size = sizeof client_addr;
 		sockcli_fd = accept(socklis_fd, (struct sockaddr*)&client_addr, &sin_size);
 		if(sockcli_fd == -1) {
 			perror("accept");
 			continue;
 		}
-
 		inet_ntop(client_addr.ss_family, get_in_addr((struct sockaddr*)&client_addr), s, sizeof s);
 		cout << "Connection from " << s << endl;
 		pthread_t temp;
@@ -249,8 +251,9 @@ void *displayGUI(void* serverip)
 	memset(argv[0],'a',5);
 	
 	QApplication app(argc, argv);  
-
-	MainWin window(*(string*)serverip);
+	string s = *(string*)serverip;
+	s = s + "::" MYPORT;
+	MainWin window(s);
 
 	window.setWindowTitle("Server Running...");
 	window.show();

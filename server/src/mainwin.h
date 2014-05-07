@@ -7,6 +7,7 @@
 #include <QLineEdit>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QGridLayout>
 #include <QString>
 #include <string>
 #include <list>
@@ -25,6 +26,8 @@ class MainWin : public QMainWindow
 	private:
 		QPushButton * btnQuit;
 		QLineEdit	* addr;
+		QWidget 	* window;
+		QGridLayout * layout;
 };
 
 #endif
