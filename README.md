@@ -12,34 +12,39 @@
   + USC ID: 4780838615
 
 ##Compile Instructions
-+ Open up two terminals. Navigate one to 'server' directory and one to 'client' directory. In each:
++ Open up two terminals. Navigate one to 'server' directory and one to 'client' directory. In each
 	
+
 	$ qmake
 	$ make
 
+	
 ##IMPORTANT
 + Due to (presumably) the dynamic nature of USC Wireless's IP addresses, use the loopback IP (127.0.0.1) to test this program for now.
 + Terminating the server UI does not kill the process. This is because of blocking caused by the accept() command. I've yet to find a decent workaround, so please terminate the UI and then reconnect with another client in order to properly end the server and test the ad billing feature.
 
 ##Run Instructions
 **Server Terminal**
-
+	
 	$ bin/server <input file> <ad data input file> <ad data billing output file>
-
+	
 + Example
+	
 
 	$ bin/server data100/index.txt adData/input.in adData/output.out
-
+	
 + A window should pop up with the host's IP Address and Port.
 
 **Client Terminal**
-
+	
 	$ bin/client <Server IP/Hostname> <Port>
-
+	
 + Note: Use 127.0.0.1 instead of server displayed IP. Use server displayed port.
 + Example
+	
 
 	$ bin/client 127.0.0.1 31803
+	
 	
 ##Client Interface
 + To search a single word, enter the word into the "Search Word" textbox and click the "Search Word" button.
