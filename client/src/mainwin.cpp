@@ -131,7 +131,7 @@ void MainWin::doSearchWord()
 		return;
 	}
 	list<string> ads = parseInput(input);
-	for(auto & it : searchResults)
+	for(auto & it : ads)
 		adList->addItem(QString::fromStdString(it));
 }
 
@@ -177,7 +177,7 @@ void MainWin::doSearchOR()
 		return;
 	}
 	list<string> ads = parseInput(input);
-	for(auto & it : searchResults)
+	for(auto & it : ads)
 		adList->addItem(QString::fromStdString(it));
 }
 
@@ -223,7 +223,7 @@ void MainWin::doSearchAND()
 		return;
 	}
 	list<string> ads = parseInput(input);
-	for(auto & it : searchResults)
+	for(auto & it : ads)
 		adList->addItem(QString::fromStdString(it));
 
 }
@@ -348,12 +348,12 @@ list<string> MainWin::parseInput(string input)
 	{
 		if(input.substr(i,3) == ":::")
 		{
-			inlist.push_back(input.substr(sInd,i));
+			inlist.push_back(input.substr(sInd,i-sInd));
 			sInd = i+3;
 			i = i+3;
 		}
 	}
-	inlist.push_back(input.substr(sInd));
+	inlist.push_back(input.substr(sInd,input.length()-sInd-3)); //Get rid of last :::
 	return inlist;
 }
 

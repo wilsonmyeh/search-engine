@@ -52,4 +52,4 @@
 
 ##Miscellaneous
 	
-	Terminating the server does not kill the process. This is because of blocking caused by the recv() command. It will, however, exit upon any query post-termination.
+	Terminating the server does not kill the process. This is because of blocking caused by the recv() command. Besides CTRL+C, it will also exit upon any query post-termination.

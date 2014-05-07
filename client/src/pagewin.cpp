@@ -119,12 +119,12 @@ list<string> PageWin::parseInput(string input)
 	{
 		if(input.substr(i,3) == ":::")
 		{
-			inlist.push_back(input.substr(sInd,i));
+			inlist.push_back(input.substr(sInd,i-sInd));
 			sInd = i+3;
 			i = i+3;
 		}
 	}
-	inlist.push_back(input.substr(sInd));
+	inlist.push_back(input.substr(sInd,input.length()-sInd-3)); //Get rid of last :::
 	return inlist;
 }
 
