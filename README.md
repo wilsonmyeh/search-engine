@@ -15,8 +15,8 @@
 + Open up two terminals. Navigate one to 'server' directory and one to 'client' directory. In each
 	
 
-	$ qmake
-	$ make
+	<pre>$ qmake</pre>
+	<pre>$ make</pre>
 
 	
 ##IMPORTANT
@@ -31,7 +31,7 @@
 + Example
 	
 
-	$ bin/server data100/index.txt adData/input.in adData/output.out
+	<pre>$ bin/server data100/index.txt adData/input.in adData/output.out</pre>
 	
 + A window should pop up with the host's IP Address and Port.
 
@@ -43,7 +43,7 @@
 + Example
 	
 
-	$ bin/client 127.0.0.1 31803
+	<pre>$ bin/client 127.0.0.1 31803</pre>
 	
 	
 ##Client Interface
