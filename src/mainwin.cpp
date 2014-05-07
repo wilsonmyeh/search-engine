@@ -38,7 +38,7 @@ MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap,
 	btnSortRank->setFixedSize(250,25);
 
 	resultList->setFixedSize(500,300);
-	adList->setFixedSize(250,250);
+	adList->setFixedSize(500,100);
 
 
 	searchLayout->addWidget(txtWord,0,0,Qt::AlignLeft);
@@ -51,10 +51,10 @@ MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap,
 	searchLayout->addWidget(btnSortName,3,0,Qt::AlignLeft);
 	searchLayout->addWidget(btnSortRank,3,0,Qt::AlignRight);
 	searchLayout->addWidget(resultList,4,0,Qt::AlignJustify);
-	searchLayout->addWidget(adList,5,0,Qt::AlignLeft);
+	searchLayout->addWidget(adList,5,0,Qt::AlignJustify);
 
-	searchLayout->addWidget(btnAbout,5,0,Qt::AlignRight);
-	searchLayout->addWidget(btnQuit,5,0,Qt::AlignRight);
+	searchLayout->addWidget(btnAbout,6,0,Qt::AlignLeft);
+	searchLayout->addWidget(btnQuit,6,0,Qt::AlignRight);
 
 	connect(btnAbout,		SIGNAL(clicked()),	this, SLOT(showAbout()));
 	connect(btnQuit,		SIGNAL(clicked()),	this, SLOT(doQuit()));

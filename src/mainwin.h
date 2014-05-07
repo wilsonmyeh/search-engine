@@ -17,7 +17,6 @@
 
 #include "msort.h"
 #include "pagewin.h"
-#include "mergesortkevin.h"
 
 struct comp_bid {
     string keyword;
