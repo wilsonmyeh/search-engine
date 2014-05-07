@@ -12,32 +12,57 @@
 #include <QVBoxLayout>
 #include <QGridLayout>
 #include <QString>
-#include <string>
+
+#include <deque>
+#include <map>
 #include <list>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <iomanip>
+#include <fstream>
+#include <stdexcept>
+#include <cstdlib>
+
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <arpa/inet.h>
+#include <pthread.h>
 
 #include "msort.h"
 #include "pagewin.h"
 
-struct AlphaComp {
-	bool operator()(const WebPage* lhs, const WebPage* rhs)
-	{
-		return lhs->filename().compare(rhs->filename()) <= 0;
-	}
-};
+#define HEADERLEN 10
+#define MAXBUFFER 4096
+
+struct AlphaStrComp {
+ bool operator() (const string & lhs, const string & rhs) 
+    { 
+    	if(lhs<=rhs)
+    	 return true;
+        else
+        	return false;
+    }
+ };
 
 class MainWin : public QMainWindow
 {
 	Q_OBJECT
 
 	public:
-		MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap, map<string,vector<comp_bid>* > & cMap, QWidget *parent = 0);
+		MainWin(int sock, QWidget *parent = 0);
 		~MainWin();
 		
 
 	private slots:
 		void sortByRank();
 		void sortByName();
-		void showAbout() { QMessageBox::information(this, tr("About"), tr("Dummy search engine with hyperlink support.")); }
+		void showAbout() { QMessageBox::information(this, tr("About"), tr("Client-Server Database search engine.")); }
 		void doQuit() { this->close(); }
 		void doSearchWord();
 		void doSearchOR();
@@ -48,7 +73,15 @@ class MainWin : public QMainWindow
 	private:
 		void toLowerCase(string & s);
 		bool isValid(string & s) const;
-		void displayAds(Set<string> & input);
+		string padlen(int len);
+		int packetlen(int sock);
+		list<string> parseInput(string input);
+
+		int sendall(int sock, const char* buf, int *len);
+		int recvall(string & s, int sock, int len);
+
+		int sockfd;
+		list<string> searchResults;
 
 		QPushButton * btnQuit;
 		QPushButton * btnAbout;
@@ -67,13 +100,6 @@ class MainWin : public QMainWindow
 		
 		QGridLayout	* searchLayout;
 		QWidget 	* window;
-
-		map<string,WebPage*> & fileLookup;
-		map<string,Set<WebPage*> > & wordMap;
-		list<WebPage*> searchResults;
-		map<string,vector<comp_bid>* > compMap;
-
-		map<string,comp_bid*> curAds;
 
 		PageWin 	* pWin;
 };

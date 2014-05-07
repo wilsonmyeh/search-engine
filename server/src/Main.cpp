@@ -92,7 +92,7 @@ void *newClient(void* sockcli_fd);
 void *displayGUI(void* serverip);
 
 int sendall(int sock, const char* buf, int *len);
-int recvall(string & s, int sock, int len);
+int recvall(string & s, int sock);
 
 map<string,Set<WebPage*> > wordMap; //I'm sorry please forgive me
 map<string,WebPage*> fileLookup;	//Ah the global vars keep happening
@@ -251,7 +251,6 @@ int main(int argc, char* argv[])
 
 	vector<pthread_t> threads; //C++ doesn't have threadpools ;_;
 	while(serverip != "NULL") { //accept() loop until mainwin closes
-		cout << serverip << endl;
 		sin_size = sizeof client_addr;
 		sockcli_fd = accept(socklis_fd, (struct sockaddr*)&client_addr, &sin_size);
 		if(sockcli_fd == -1) {
@@ -287,6 +286,8 @@ void *newClient(void* sockcli_fd)
 	while(numBytes != 0)
 	{
 		//0 = word search, 1 = OR search, 2 = AND search, 3 = webpage request, 4 = adclick
+		//Each packet has 10 byte header that indicates length
+		//Some search types split into multiple packets
 		switch(buf[0]) {
 			case '0' : search(sock,0); break;
 			case '1' : search(sock,1); break;
@@ -295,7 +296,7 @@ void *newClient(void* sockcli_fd)
 			case '4' : adClick(sock); break;
 		}
 
-		if((numBytes = recv(sock,buf,1,0)) == -1) { //First get the type of packet
+		if((numBytes = recv(sock,buf,1,0)) == -1) {
 			perror("recv");
 			exit(1);
 		}
@@ -308,15 +309,15 @@ void *newClient(void* sockcli_fd)
 
 int search(int sock, int type)
 {
-	int len = packetlen(sock);
 	string query;
-	if(recvall(query,sock,len) == -1) {
+	if(recvall(query,sock) == -1) {
 		perror("recv");
 		return 1;
 	}
 
 	Set<string> inputWords;
 	Set<WebPage*> results;
+	int len;
 
 	switch(type)
 	{
@@ -336,7 +337,7 @@ int search(int sock, int type)
 	string output;
 	for(auto & it : searchResults)
 	{
-		output += it->filename() + ":::";
+		output += it->filename() + ":::"; //Separate items with :::
 	}
 	output = padlen(output.length()) + output;
 
@@ -405,14 +406,15 @@ void andSearch(Set<string> & inputWords, Set<WebPage*> & results, string & query
 	}
 }
 
-int sendWebPage(int sock)
+int sendWebPage(int sock) //3 Packets: Body, Outgoing, Incoming
 {
-	int len = packetlen(sock);
 	string name;
-	if(recvall(name,sock,len) == -1) {
+	if(recvall(name,sock) == -1) {
 		perror("recv");
 		return 1;
 	}
+
+	int len;
 	WebPage* page = fileLookup[name];
 	stringstream body;
 	body << *page;
@@ -456,15 +458,14 @@ int sendWebPage(int sock)
 
 int adClick(int sock)
 {
-	int len = packetlen(sock);
 	string name, keyword;
 
-	if(recvall(name,sock,len) == -1) {
+	if(recvall(name,sock) == -1) {
 		perror("recv");
 		return 1;
 	}
 
-	if(recvall(keyword,sock,len) == -1) {
+	if(recvall(keyword,sock) == -1) {
 		perror("recv");
 		return 1;
 	}
@@ -618,8 +619,10 @@ int sendall(int sock, const char* buf, int *len)
 	return (n == -1) ? -1 : 0; //-1 failure, 0 success
 }
 
-int recvall(string & s, int sock, int len)
+int recvall(string & s, int sock)
 {
+	s = "";
+	int len = packetlen(sock);
 	int rec = 0;
 	char buf[MAXBUFFER];
 	int n; //bytes received per iteration

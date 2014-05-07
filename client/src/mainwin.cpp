@@ -1,10 +1,8 @@
 #include "mainwin.h"
-#include "pagerank.h"
 
 using namespace std;
 
-MainWin::MainWin(map<string,Set<WebPage*> > & wMap, map<string,WebPage*> & fMap, map<string,vector<comp_bid>* > & cMap, QWidget *parent) :
-				QMainWindow(parent), fileLookup(fMap),wordMap(wMap),compMap(cMap),pWin(NULL)
+MainWin::MainWin(int sock, QWidget *parent) : QMainWindow(parent), sockfd(sock), pWin(NULL)
 {
 	btnQuit			= new QPushButton("&Quit");
 	btnAbout		= new QPushButton("&About");
@@ -92,9 +90,7 @@ MainWin::~MainWin()
 
 void MainWin::doSearchWord()
 {
-	Set<string> inputWords;
-
-	Set<WebPage*> results;
+	
 	string query = txtWord->text().toStdString();
 	toLowerCase(query);
 	if(!isValid(query))
@@ -103,30 +99,44 @@ void MainWin::doSearchWord()
 		return;
 	}
 
-	try{	results = wordMap.at(query);	}
-	catch (exception e) { }
+	string output = "0" + padlen(query.length()) + query;
+	int len = output.length();
+	if(sendall(sockfd,output.c_str(),&len) == -1)
+	{
+		perror("send");
+		return;
+	}
 
-	if(results.empty())
+	string input;
+
+	if(recvall(input,sockfd,packetlen(sockfd)) == -1)
+	{
+		perror("recv");
+		return;
+	}
+
+	if(input.empty())
 		QMessageBox::information(this, tr("Warui"), tr("No matches found."));
 	else
 	{
+		searchResults = parseInput(input);
 		resultList->clear();
-		searchResults.clear();
-		for(auto& it : results) {
-			resultList->addItem(QString::fromStdString(it->filename()));
-			searchResults.push_back(it);
-		}
+		for(auto& it : searchResults)
+			resultList->addItem(QString::fromStdString(it));
 	}
 
-	inputWords.insert(query);
-	displayAds(inputWords);
+	if(recvall(input,sockfd,packetlen(sockfd)) == -1)
+	{
+		perror("ad recv");
+		return;
+	}
+	list<string> ads = parseInput(input);
+	for(auto & it : searchResults)
+		adList->addItem(QString::fromStdString(it));
 }
 
 void MainWin::doSearchOR()
 {
-	Set<string> inputWords;
-
-	Set<WebPage*> results;
 	string query = txtOR->text().toStdString();
 	toLowerCase(query);
 	if(!isValid(query))
@@ -135,39 +145,44 @@ void MainWin::doSearchOR()
 		return;
 	}
 
-	stringstream ss;
-	ss << query;
-	string s;
-	ss >> s;
-	while(!ss.fail()) //setUnion every set mapped to each word. Combines every matching WebPage.
+	string output = "1" + padlen(query.length()) + query;
+	int len = output.length();
+	if(sendall(sockfd,output.c_str(),&len) == -1)
 	{
-		try {	results = results.setUnion(wordMap.at(s));		}
-		catch(exception e) { }
-
-		inputWords.insert(s);
-		ss >> s;
+		perror("send");
+		return;
 	}
 
-	if(results.empty())
+	string input;
+
+	if(recvall(input,sockfd,packetlen(sockfd)) == -1)
+	{
+		perror("recv");
+		return;
+	}
+
+	if(input.empty())
 		QMessageBox::information(this, tr("Warui"), tr("No matches found."));
 	else
 	{
+		searchResults = parseInput(input);
 		resultList->clear();
-		searchResults.clear();
-		for(auto& it : results) {
-			resultList->addItem(QString::fromStdString(it->filename()));
-			searchResults.push_back(it);
-		}
+		for(auto& it : searchResults)
+			resultList->addItem(QString::fromStdString(it));
 	}
 
-	displayAds(inputWords);
+	if(recvall(input,sockfd,packetlen(sockfd)) == -1)
+	{
+		perror("ad recv");
+		return;
+	}
+	list<string> ads = parseInput(input);
+	for(auto & it : searchResults)
+		adList->addItem(QString::fromStdString(it));
 }
 
 void MainWin::doSearchAND()
 {
-	Set<string> inputWords;
-
-	Set<WebPage*> results;
 	string query = txtAND->text().toStdString();
 	toLowerCase(query);
 	if(!isValid(query))
@@ -175,87 +190,61 @@ void MainWin::doSearchAND()
 		QMessageBox::information(this, tr("Error"), tr("Please use only spaces and alphanumeric characters."));
 		return;
 	}
-	stringstream ss;
-	ss << query;
-	string s;
-	ss >> s;
-	try {	results = wordMap.at(s);	} //Every webpage that doesn't contain each word is culled
-	catch(exception e) {	results = Set<WebPage*>();	} //If input not found, then automatically no matches
-		
-	while(!ss.fail() && !results.empty()) //Performs setIntersection operation with every set mapped to each word
-	{
-		try {	results = results.setIntersection(wordMap.at(s));	} 
-		catch(exception e) {	results = Set<WebPage*>();	}
 
-		inputWords.insert(s);
-		ss >> s;
+	string output = "2" + padlen(query.length()) + query;
+	int len = output.length();
+	if(sendall(sockfd,output.c_str(),&len) == -1)
+	{
+		perror("send");
+		return;
 	}
 
-	if(results.empty())
+	string input;
+
+	if(recvall(input,sockfd,packetlen(sockfd)) == -1)
+	{
+		perror("recv");
+		return;
+	}
+
+	if(input.empty())
 		QMessageBox::information(this, tr("Warui"), tr("No matches found."));
 	else
 	{
+		searchResults = parseInput(input);
 		resultList->clear();
-		for(auto& it : results) {
-			searchResults.clear();
-			resultList->addItem(QString::fromStdString(it->filename()));
-			searchResults.push_back(it);
-		}
+		for(auto& it : searchResults)
+			resultList->addItem(QString::fromStdString(it));
 	}
 
-	displayAds(inputWords);
-
-}
-
-void MainWin::displayAds(Set<string> & input)
-{
-	list<comp_bid*> bids; 
-	for(auto & it : input)
+	if(recvall(input,sockfd,packetlen(sockfd)) == -1)
 	{
-		if(compMap.find(it) == compMap.end())
-			continue;
-		vector<comp_bid>* temp = compMap[it];
-		for(auto & comp : *temp)
-			bids.push_back(&comp);
+		perror("ad recv");
+		return;
 	}
-
-	adList->clear();
-	curAds.clear();
-
-	SortBids struc;
-	merge_sort(bids,struc);
-	Set<string> compNames;
-	for(auto & it : bids)
-	{
-		if(compNames.insert(it->company).second)
-		{
-			curAds[it->company] = it;
-			adList->addItem(QString::fromStdString(it->company));
-		}
-	}
+	list<string> ads = parseInput(input);
+	for(auto & it : searchResults)
+		adList->addItem(QString::fromStdString(it));
 
 }
 
 void MainWin::sortByRank()
 {
-	pageRank(searchResults);
-
-	RankComp comp;
-	merge_sort(searchResults,comp);
 	resultList->clear();
 	for(auto& it : searchResults) { //TODO: Replace "???" with sorted list
-		resultList->addItem(QString::fromStdString(it->filename()));
+		resultList->addItem(QString::fromStdString(it));
 	}
 
 }
 
 void MainWin::sortByName()
 {
-	AlphaComp comp;
-	merge_sort(searchResults,comp);
+	list<string> temp = searchResults;
+	AlphaStrComp comp;
+	merge_sort(temp,comp);
 	resultList->clear();
-	for(auto& it : searchResults) {
-		resultList->addItem(QString::fromStdString(it->filename()));
+	for(auto& it : temp) {
+		resultList->addItem(QString::fromStdString(it));
 	}
 }
 
@@ -264,7 +253,39 @@ void MainWin::openResult(QListWidgetItem* item)
 	if(pWin != NULL)
 		delete pWin;
 	string page = item->text().toStdString();
-	pWin = new PageWin(fileLookup,*fileLookup.at(page));
+
+	string output = "3" + padlen(page.length()) + page;
+	int len = output.length();
+	if(sendall(sockfd,output.c_str(),&len) == -1)
+	{
+		perror("send");
+		return;
+	}
+	
+	string body;
+	if(recvall(body,sockfd,packetlen(sockfd)) == -1)
+	{
+		perror("recv");
+		return;
+	}
+
+	string input;
+	if(recvall(input,sockfd,packetlen(sockfd)) == -1)
+	{
+		perror("recv");
+		return;
+	}
+	list<string> outlinks = parseInput(input);
+
+
+	if(recvall(input,sockfd,packetlen(sockfd)) == -1)
+	{
+		perror("recv");
+		return;
+	}
+	list<string> inlinks = parseInput(input);
+
+	pWin = new PageWin(sockfd,page,body,outlinks,inlinks);
 	pWin->show();
 }
 
@@ -272,8 +293,34 @@ void MainWin::adClicked(QListWidgetItem* item)
 {
 	string ad = item->text().toStdString();
 	QMessageBox::information(this, QString::fromStdString(ad), QString::fromStdString("Welcome to " + ad + "!"));
-	curAds[ad]->hits++; 
 	
+	string output = "4" + padlen(ad.length()) + ad;
+	int len = output.length();
+	if(sendall(sockfd,output.c_str(),&len) == -1)
+	{
+		perror("send");
+		return;
+	}
+	
+}
+
+int MainWin::packetlen(int sock)
+{
+	char len[HEADERLEN];
+	int numBytes;
+	if((numBytes = recv(sock,len,HEADERLEN,0)) == -1) {
+		perror("recv");
+		exit(1);
+	}
+	return atoi(len);
+}
+
+string MainWin::padlen(int len)
+{
+	string s = to_string(len);
+	while(s.length() < 10)
+		s = "0" + s;
+	return s;
 }
 
 void MainWin::toLowerCase(string & s)
@@ -291,4 +338,54 @@ bool MainWin::isValid(string & s) const
 			return false;
 	}
 	return true;
+}
+
+list<string> MainWin::parseInput(string input)
+{
+	list<string> inlist;
+	int sInd = 0;
+	for(unsigned int i = 0;i < input.length()-3;i++)
+	{
+		if(input.substr(i,3) == ":::")
+		{
+			inlist.push_back(input.substr(sInd,i));
+			sInd = i+3;
+			i = i+3;
+		}
+	}
+	inlist.push_back(input.substr(sInd));
+	return inlist;
+}
+
+int MainWin::sendall(int sock, const char* buf, int *len)
+{
+	int sent = 0; //bytes sent
+	int n;
+	while(sent < *len) {
+		n = send(sock,buf+sent,(*len)-sent,0);
+		if(n == -1) break;
+		sent += n;
+	}
+	*len = sent; //save # bytes sent
+
+	return (n == -1) ? -1 : 0; //-1 failure, 0 success
+}
+
+int MainWin::recvall(string & s, int sock, int len)
+{
+	s = "";
+	int rec = 0;
+	char buf[MAXBUFFER];
+	int n; //bytes received per iteration
+	while(rec < len) {
+		if(len-rec < MAXBUFFER-1) //If remaining packet fits in buffer
+			n = recv(sock,buf,len-rec,0);
+		else n = recv(sock,buf,MAXBUFFER-1,0);
+		if(n == -1) break;
+		rec += n;
+		buf[n] = '\0'; //Appends null character at end of buffer
+		s += buf;
+	}
+
+	return (n == -1) ? -1 : 0; //-1 failure, 0 success
 }

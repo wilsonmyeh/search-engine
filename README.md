@@ -12,38 +12,44 @@
   + USC ID: 4780838615
 
 ##Compile Instructions
-**Main Project**:
-
+	+ Open up two terminals. Navigate one to 'server' directory and one to 'client' directory. In each:
+	
 	$ qmake
 	$ make
 
-**Webcrawler**:
-
-	$ cd webcrawler
-	$ make
-
+##IMPORTANT
+	+ Due to (presumably) the dynamic nature of USC Wireless's IP addresses, use the loopback IP (127.0.0.1) to test this program for now.
 
 ##Run Instructions
-**Main Project**:
-	From "team_project_11" directory:
+**Server Terminal**
+	
+	$ bin/server <input file> <ad data input file> <ad data billing output file>
 
-	$ bin/team_project11 <seed file>
+	+ Example
 
-	Example:
+	$ bin/server data100/index.txt adData/input.in adData/output.out
 
-	$ bin/team_project11 data/index.txt
+	+ A window should pop up with the host's IP Address and Port.
 
-**Webcrawler**:
-	From "team_project_11" directory:
+**Client Terminal**
 
-	$ webcrawler/bin/webcrawler <seed file> <output file>
+	$ bin/client <Server IP/Hostname> <Port>
 
-	Example:
+	+ Note: Use 127.0.0.1 instead of server displayed IP. Use displayed port, however.
+	+ Example
 
-	$ webcrawler/bin/webcrawler data/seed.txt data/index.txt
-
-###Interface
+	$ bin/client 127.0.0.1 31803
+	
+##Client Interface
+	
 	To search a single word, enter the word into the "Search Word" textbox and click the "Search Word" button.
 	To search using multiple words, enter into either the "Search OR" or "Search AND" textboxes and use their associated buttons.
 
 	Words consist only of digits and letters and are separated only by whitespace. Any punctuation, even apostrophes (e.g. don't), will render an input invalid.
+
+	Double-click any search result to open it.
+	Single-clicking an ad creates a pop up to simulate visiting the adsite.
+
+##Miscellaneous
+	
+	Terminating the server does not kill the process. This is because of blocking caused by the recv() command. It will, however, exit upon any query post-termination.
