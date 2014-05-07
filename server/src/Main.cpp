@@ -252,7 +252,7 @@ void *displayGUI(void* serverip)
 	
 	QApplication app(argc, argv);  
 	string s = *(string*)serverip;
-	s = s + "::" MYPORT;
+	s = s + " " MYPORT;
 	MainWin window(s);
 
 	window.setWindowTitle("Server Running...");
