@@ -10,6 +10,7 @@
 #include <fstream>
 #include <stdexcept>
 #include <cstdlib>
+#include <sstream>
 
 #include <unistd.h>
 #include <sys/types.h>
@@ -29,8 +30,17 @@
 
 #define MYPORT "31803"
 #define BACKLOG 20
+#define MAXBUFFER 4096
+#define HEADERLEN 10
 
 using namespace std;
+
+ struct comp_bid {
+    string keyword;
+    double bid;
+    string company;
+    int hits;
+ };
 
 struct AlphaStrComp {
  bool operator() (const string & lhs, const string & rhs) 
@@ -42,20 +52,51 @@ struct AlphaStrComp {
     }
  };
 
- struct comp_bid {
-    string keyword;
-    double bid;
-    string company;
-    int hits;
+ struct RankComp {
+	bool operator()(const WebPage* lhs, const WebPage* rhs)
+	{
+		return lhs->getRank() >= rhs->getRank();
+	}
 };
 
-void calculateBill(map<string,vector<comp_bid>* > & compMap, ofstream & ofile);
+ struct SortBids {
+ bool operator() (const comp_bid* lhs, const comp_bid* rhs) 
+    { 
+    	if(lhs->bid<=rhs->bid)
+    	 return true;
+      else if(lhs->bid>=rhs->bid)
+        return false;
+      else if(lhs->company<=rhs->company)
+        return true;
+      return false;
+    }
+ };
+
+void calculateBill(ofstream & ofile);
 void toLowerCase(string & s);
 bool isValid(string & s);
+string padlen(int len);
+int packetlen(int sock);
+list<string> getAds(Set<string> & input);
+
+int search(int sock, int type);
+void wordSearch(Set<string> & inputWords, Set<WebPage*> & results, string & query);
+void orSearch(Set<string> & inputWords, Set<WebPage*> & results, string & query);
+void andSearch(Set<string> & inputWords, Set<WebPage*> & results, string & query);
+int sendWebPage(int sock);
+int adClick(int sock);
+
 
 void *get_in_addr(struct sockaddr *sa);
 void *newClient(void* sockcli_fd);
 void *displayGUI(void* serverip);
+
+int sendall(int sock, const char* buf, int *len);
+int recvall(string & s, int sock, int len);
+
+map<string,Set<WebPage*> > wordMap; //I'm sorry please forgive me
+map<string,WebPage*> fileLookup;	//Ah the global vars keep happening
+map<string,vector<comp_bid>* > compMap; //Map keywords to bids...O Gog I did it again
 
 int main(int argc, char* argv[])
 {
@@ -65,8 +106,8 @@ int main(int argc, char* argv[])
 	}
 
 	deque<WebPage> pages;
-	map<string,WebPage*> fileLookup;
-
+	
+	//fileLookup global var
 	ifstream ifile;
 	ifile.open(argv[1]);
 	if(ifile.fail()) {
@@ -85,7 +126,7 @@ int main(int argc, char* argv[])
 	for(auto& it : pages) //Parses links from each page
 		it.parse(fileLookup);
 
-	map<string,Set<WebPage*> > wordMap;
+	//wordMap global var
 	for(unsigned int x = 0;x < pages.size();x++) //Goes through each page, associating it with each of its words
 	{
 		Set<string> temp = pages[x].allWords();
@@ -116,10 +157,8 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    //compMap global var
     comp_bid cb; 
-    map<string,vector<comp_bid>* > compMap;
-
-
     int count=0;
     int numLines;
     string line;
@@ -232,15 +271,260 @@ int main(int argc, char* argv[])
 		
 	}
 	
-    calculateBill(compMap,ofile);
+    calculateBill(ofile);
     return 0;
 }
 
 void *newClient(void* sockcli_fd)
 {
-	int fd = *((int*)sockcli_fd);
+	int sock = *((int*)sockcli_fd);
+	char buf[MAXBUFFER];
+	int numBytes;
+	if((numBytes = recv(sock,buf,1,0)) == -1) { //First get the type of packet
+			perror("recv");
+			exit(1);
+	}
+	while(numBytes != 0)
+	{
+		//0 = word search, 1 = OR search, 2 = AND search, 3 = webpage request, 4 = adclick
+		switch(buf[0]) {
+			case '0' : search(sock,0); break;
+			case '1' : search(sock,1); break;
+			case '2' : search(sock,2); break;
+			case '3' : sendWebPage(sock); break;
+			case '4' : adClick(sock); break;
+		}
+
+		if((numBytes = recv(sock,buf,1,0)) == -1) { //First get the type of packet
+			perror("recv");
+			exit(1);
+		}
+		
+		
+	}
 	return 0;
 
+}
+
+int search(int sock, int type)
+{
+	int len = packetlen(sock);
+	string query;
+	if(recvall(query,sock,len) == -1) {
+		perror("recv");
+		return 1;
+	}
+
+	Set<string> inputWords;
+	Set<WebPage*> results;
+
+	switch(type)
+	{
+		case 0 : wordSearch(inputWords,results,query); break;
+		case 1 : orSearch(inputWords,results,query); break;
+		case 2 : andSearch(inputWords,results,query); break;
+	}
+
+	list<WebPage*> searchResults;
+	for(auto & it : results)
+		searchResults.push_back(it);
+
+	pageRank(searchResults);
+	RankComp comp;
+	merge_sort(searchResults,comp);
+
+	string output;
+	for(auto & it : searchResults)
+	{
+		output += it->filename() + ":::";
+	}
+	output = padlen(output.length()) + output;
+
+	len = output.length();
+	if(sendall(sock,output.c_str(),&len) == -1) {
+		perror("send");
+		return 1;
+	}
+
+	list<string> adlist = getAds(inputWords);
+	output = "";
+	for(auto & it : searchResults)
+	{
+		output += it->filename() + ":::";
+	}
+	output = padlen(output.length()) + output;
+
+	len = output.length();
+	if(sendall(sock,output.c_str(),&len) == -1) {
+		perror("send");
+		return 1;
+	}
+	return 0;
+}
+
+void wordSearch(Set<string> & inputWords, Set<WebPage*> & results, string & query)
+{
+	try{	results = wordMap.at(query);	}
+	catch (exception e) { }
+
+	inputWords.insert(query);
+}
+
+void orSearch(Set<string> & inputWords, Set<WebPage*> & results, string & query)
+{
+	stringstream ss;
+	ss << query;
+	string s;
+	ss >> s;
+	while(!ss.fail()) //setUnion every set mapped to each word. Combines every matching WebPage.
+	{
+		try {	results = results.setUnion(wordMap.at(s));		}
+		catch(exception e) { }
+
+		inputWords.insert(s);
+		ss >> s;
+	}
+}
+
+void andSearch(Set<string> & inputWords, Set<WebPage*> & results, string & query)
+{
+	stringstream ss;
+	ss << query;
+	string s;
+	ss >> s;
+	try {	results = wordMap.at(s);	} //Every webpage that doesn't contain each word is culled
+	catch(exception e) {	results = Set<WebPage*>();	} //If input not found, then automatically no matches
+		
+	while(!ss.fail() && !results.empty()) //Performs setIntersection operation with every set mapped to each word
+	{
+		try {	results = results.setIntersection(wordMap.at(s));	} 
+		catch(exception e) {	results = Set<WebPage*>();	}
+
+		inputWords.insert(s);
+		ss >> s;
+	}
+}
+
+int sendWebPage(int sock)
+{
+	int len = packetlen(sock);
+	string name;
+	if(recvall(name,sock,len) == -1) {
+		perror("recv");
+		return 1;
+	}
+	WebPage* page = fileLookup[name];
+	stringstream body;
+	body << *page;
+	string output = padlen(body.str().length()) + body.str();
+	len = output.length();
+
+	if(sendall(sock,output.c_str(),&len) == -1) {
+		perror("send");
+		return 1;
+	}
+
+	Set<WebPage*> outLinks = page->allOutgoingLinks();
+	string outl;
+	for(auto & it : outLinks)
+	{
+		outl += it->filename() + ":::";
+	}
+	outl = padlen(outl.length()) + outl;
+
+	len = outl.length();
+	if(sendall(sock,outl.c_str(),&len) == -1) {
+		perror("send");
+		return 1;
+	}
+
+	Set<WebPage*> inLinks = page->allIncomingLinks();
+	string inl;
+	for(auto & it : inLinks)
+	{
+		inl += it->filename() + ":::";
+	}
+	inl = padlen(inl.length()) + inl;
+
+	len = inl.length();
+	if(sendall(sock,inl.c_str(),&len) == -1) {
+		perror("send");
+		return 1;
+	}
+	return 0;
+}
+
+int adClick(int sock)
+{
+	int len = packetlen(sock);
+	string name, keyword;
+
+	if(recvall(name,sock,len) == -1) {
+		perror("recv");
+		return 1;
+	}
+
+	if(recvall(keyword,sock,len) == -1) {
+		perror("recv");
+		return 1;
+	}
+	
+	vector<comp_bid>* temp = compMap[keyword]; //Find bid, increment hits
+	for(auto & it : *temp)
+	{
+		if(it.company == name) {
+			it.hits++;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+list<string> getAds(Set<string> & input)
+{
+	list<comp_bid*> bids; 
+	for(auto & it : input)
+	{
+		if(compMap.find(it) == compMap.end())
+			continue;
+		vector<comp_bid>* temp = compMap[it];
+		for(auto & comp : *temp)
+			bids.push_back(&comp);
+	}
+
+
+	SortBids struc;
+	merge_sort(bids,struc);
+	Set<string> compNames;
+	list<string> finalList;
+	for(auto & it : bids)
+	{
+		if(compNames.insert(it->company).second) //If company is new, push to list
+		{
+			finalList.push_back(it->company);
+		}
+	}
+	return finalList;
+}
+
+int packetlen(int sock)
+{
+	char len[HEADERLEN];
+	int numBytes;
+	if((numBytes = recv(sock,len,HEADERLEN,0)) == -1) {
+		perror("recv");
+		exit(1);
+	}
+	return atoi(len);
+}
+
+string padlen(int len)
+{
+	string s = to_string(len);
+	while(s.length() < 10)
+		s = "0" + s;
+	return s;
 }
 
 void *displayGUI(void* serverip)
@@ -265,7 +549,7 @@ void *displayGUI(void* serverip)
 	return 0;
 }
 
-void calculateBill(map<string,vector<comp_bid>* > & compMap, ofstream & ofile)
+void calculateBill(ofstream & ofile)
 {
 	map<string,double> bill;
 	list<string> compNames;
@@ -318,4 +602,36 @@ void *get_in_addr(struct sockaddr *sa)
     }
 
     return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+int sendall(int sock, const char* buf, int *len)
+{
+	int sent = 0; //bytes sent
+	int n;
+	while(sent < *len) {
+		n = send(sock,buf+sent,(*len)-sent,0);
+		if(n == -1) break;
+		sent += n;
+	}
+	*len = sent; //save # bytes sent
+
+	return (n == -1) ? -1 : 0; //-1 failure, 0 success
+}
+
+int recvall(string & s, int sock, int len)
+{
+	int rec = 0;
+	char buf[MAXBUFFER];
+	int n; //bytes received per iteration
+	while(rec < len) {
+		if(len-rec < MAXBUFFER-1) //If remaining packet fits in buffer
+			n = recv(sock,buf,len-rec,0);
+		else n = recv(sock,buf,MAXBUFFER-1,0);
+		if(n == -1) break;
+		rec += n;
+		buf[n] = '\0'; //Appends null character at end of buffer
+		s += buf;
+	}
+
+	return (n == -1) ? -1 : 0; //-1 failure, 0 success
 }
