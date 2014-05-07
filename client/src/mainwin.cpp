@@ -88,6 +88,7 @@ MainWin::~MainWin()
 	*/
 }
 
+//TODO: Refactor search slots
 void MainWin::doSearchWord()
 {
 	
@@ -130,9 +131,21 @@ void MainWin::doSearchWord()
 		perror("ad recv");
 		return;
 	}
-	list<string> ads = parseInput(input);
-	for(auto & it : ads)
-		adList->addItem(QString::fromStdString(it));
+	
+	list<string> ads = parseInput(input); //Stream format: Company name, associated keyword
+	adList->clear();
+	bool isName = true;
+	string compName;
+	for(auto & it : ads) {
+		if(isName) {
+			adList->addItem(QString::fromStdString(it));
+			compName = it;
+		}
+		else {
+			adkeyword[compName] = it;
+		}
+		isName = !isName;
+	}
 }
 
 void MainWin::doSearchOR()
@@ -176,9 +189,21 @@ void MainWin::doSearchOR()
 		perror("ad recv");
 		return;
 	}
-	list<string> ads = parseInput(input);
-	for(auto & it : ads)
-		adList->addItem(QString::fromStdString(it));
+	
+	list<string> ads = parseInput(input); //Stream format: Company name, associated keyword
+	adList->clear();
+	bool isName = true;
+	string compName;
+	for(auto & it : ads) {
+		if(isName) {
+			adList->addItem(QString::fromStdString(it));
+			compName = it;
+		}
+		else {
+			adkeyword[compName] = it;
+		}
+		isName = !isName;
+	}
 }
 
 void MainWin::doSearchAND()
@@ -222,9 +247,21 @@ void MainWin::doSearchAND()
 		perror("ad recv");
 		return;
 	}
-	list<string> ads = parseInput(input);
-	for(auto & it : ads)
-		adList->addItem(QString::fromStdString(it));
+
+	list<string> ads = parseInput(input); //Stream format: Company name, associated keyword
+	adList->clear();
+	bool isName = true;
+	string compName;
+	for(auto & it : ads) {
+		if(isName) {
+			adList->addItem(QString::fromStdString(it));
+			compName = it;
+		}
+		else {
+			adkeyword[compName] = it;
+		}
+		isName = !isName;
+	}
 
 }
 
@@ -301,6 +338,15 @@ void MainWin::adClicked(QListWidgetItem* item)
 		perror("send");
 		return;
 	}
+
+	string keyword = adkeyword[ad];
+	output = padlen(keyword.length()) + keyword;
+	len = output.length();
+	if(sendall(sockfd,output.c_str(),&len) == -1)
+	{
+		perror("send");
+		return;
+	}
 	
 }
 
@@ -344,6 +390,10 @@ list<string> MainWin::parseInput(string input)
 {
 	list<string> inlist;
 	int sInd = 0;
+
+	if(input.length() < 4) //empty input
+		return inlist;
+	
 	for(unsigned int i = 0;i < input.length()-3;i++)
 	{
 		if(input.substr(i,3) == ":::")

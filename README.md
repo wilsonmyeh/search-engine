@@ -19,6 +19,7 @@
 
 ##IMPORTANT
 	+ Due to (presumably) the dynamic nature of USC Wireless's IP addresses, use the loopback IP (127.0.0.1) to test this program for now.
+	+ Terminating the server UI does not kill the process. This is because of blocking caused by the accept() command. I've yet to find a decent workaround, so please terminate the UI and then reconnect with another client in order to properly end the server and test the ad billing feature.
 
 ##Run Instructions
 **Server Terminal**
@@ -48,8 +49,4 @@
 	Words consist only of digits and letters and are separated only by whitespace. Any punctuation, even apostrophes (e.g. don't), will render an input invalid.
 
 	Double-click any search result to open it.
-	Single-clicking an ad creates a pop up to simulate visiting the adsite.
-
-##Miscellaneous
-	
-	Terminating the server does not kill the process. This is because of blocking caused by the recv() command. Besides CTRL+C, it will also exit upon any query post-termination.
+	Single-clicking an ad creates a pop up to symbolize visiting the adsite.

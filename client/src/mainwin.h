@@ -82,6 +82,7 @@ class MainWin : public QMainWindow
 
 		int sockfd;
 		list<string> searchResults;
+		map<string,string> adkeyword;
 
 		QPushButton * btnQuit;
 		QPushButton * btnAbout;

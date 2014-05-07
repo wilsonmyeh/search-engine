@@ -115,6 +115,10 @@ list<string> PageWin::parseInput(string input)
 {
 	list<string> inlist;
 	int sInd = 0;
+
+	if(input.length() < 4) //empty input
+		return inlist;
+	
 	for(unsigned int i = 0;i < input.length()-3;i++)
 	{
 		if(input.substr(i,3) == ":::")

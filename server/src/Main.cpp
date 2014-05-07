@@ -20,6 +20,7 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
 #include <pthread.h>
 
 #include "mainwin.h"
@@ -96,7 +97,7 @@ int recvall(string & s, int sock);
 
 map<string,Set<WebPage*> > wordMap; //I'm sorry please forgive me
 map<string,WebPage*> fileLookup;	//Ah the global vars keep happening
-map<string,vector<comp_bid>* > compMap; //Map keywords to bids...O Gog I did it again
+map<string,vector<comp_bid*>* > compMap; //Map keywords to bids...O Gog I did it again
 
 int main(int argc, char* argv[])
 {
@@ -158,7 +159,7 @@ int main(int argc, char* argv[])
     }
 
     //compMap global var
-    comp_bid cb; 
+    comp_bid* cb; 
     int count=0;
     int numLines;
     string line;
@@ -172,16 +173,17 @@ int main(int argc, char* argv[])
             ss>>numLines;
         }
         else if(count>0 && count <=numLines) { 
+        	cb = new comp_bid;
             string key;
             ss >> key;
             toLowerCase(key);
-            cb.keyword = key;
-            ss>>cb.bid;
+            cb->keyword = key;
+            ss>>cb->bid;
             ws(ss);
-            getline(ss,cb.company);
-            cb.hits = 0;
+            getline(ss,cb->company);
+            cb->hits = 0;
             if(compMap.find(key) == compMap.end()) {
-                vector<comp_bid>* temp = new vector<comp_bid>();
+                vector<comp_bid*>* temp = new vector<comp_bid*>();
                 compMap[key] = temp;
             }
             compMap[key]->push_back(cb);
@@ -193,6 +195,7 @@ int main(int argc, char* argv[])
     //Done with Data Input, time for the networking!
 
     int socklis_fd; //listen() socket file descriptor
+	
     struct addrinfo hints, *servinfo, *p;
     char s[INET6_ADDRSTRLEN];
 
@@ -209,6 +212,7 @@ int main(int argc, char* argv[])
 	//Bind to the first socket/port that works
 	for(p = servinfo; p != NULL; p = p->ai_next) {
 		if ((socklis_fd = socket(p->ai_family, p->ai_socktype, p->ai_protocol)) == -1) {
+
             perror("server: socket");
             continue;
         }
@@ -249,12 +253,14 @@ int main(int argc, char* argv[])
 	}
 
 
+
 	vector<pthread_t> threads; //C++ doesn't have threadpools ;_;
 	while(serverip != "NULL") { //accept() loop until mainwin closes
 		sin_size = sizeof client_addr;
+		
 		sockcli_fd = accept(socklis_fd, (struct sockaddr*)&client_addr, &sin_size);
-		if(sockcli_fd == -1) {
-			perror("accept");
+		if(sockcli_fd == -1) { //Checks socket every second
+			sleep(1);
 			continue;
 		}
 		inet_ntop(client_addr.ss_family, get_in_addr((struct sockaddr*)&client_addr), s, sizeof s);
@@ -271,6 +277,15 @@ int main(int argc, char* argv[])
 	}
 	
     calculateBill(ofile);
+
+    for(auto & it : compMap)
+    {
+    	for(auto & it2 : *it.second)
+    	{
+    		delete it2;
+    	}
+    	delete it.second;
+    }
     return 0;
 }
 
@@ -349,9 +364,9 @@ int search(int sock, int type)
 
 	list<string> adlist = getAds(inputWords);
 	output = "";
-	for(auto & it : searchResults)
+	for(auto & it : adlist)
 	{
-		output += it->filename() + ":::";
+		output += it + ":::";
 	}
 	output = padlen(output.length()) + output;
 
@@ -470,11 +485,11 @@ int adClick(int sock)
 		return 1;
 	}
 	
-	vector<comp_bid>* temp = compMap[keyword]; //Find bid, increment hits
+	vector<comp_bid*>* temp = compMap[keyword]; //Find bid, increment hits
 	for(auto & it : *temp)
 	{
-		if(it.company == name) {
-			it.hits++;
+		if(it->company == name) {
+			it->hits++;
 			break;
 		}
 	}
@@ -489,9 +504,9 @@ list<string> getAds(Set<string> & input)
 	{
 		if(compMap.find(it) == compMap.end())
 			continue;
-		vector<comp_bid>* temp = compMap[it];
+		vector<comp_bid*>* temp = compMap[it];
 		for(auto & comp : *temp)
-			bids.push_back(&comp);
+			bids.push_back(comp);
 	}
 
 
@@ -504,6 +519,7 @@ list<string> getAds(Set<string> & input)
 		if(compNames.insert(it->company).second) //If company is new, push to list
 		{
 			finalList.push_back(it->company);
+			finalList.push_back(it->keyword);
 		}
 	}
 	return finalList;
@@ -544,7 +560,6 @@ void *displayGUI(void* serverip)
 	window.show();
 
 	app.exec();
-
 	*(string*)serverip = "NULL"; //Flags exit of mainwin GUI
 
 	return 0;
@@ -556,14 +571,14 @@ void calculateBill(ofstream & ofile)
 	list<string> compNames;
 	for(auto & it : compMap)
 	{
-		vector<comp_bid> & temp = *it.second;
+		vector<comp_bid*> & temp = *it.second;
 		for(unsigned int i = 0;i < temp.size();i++)
 		{
-			if(bill.find(temp[i].company) == bill.end()) {
-				compNames.push_back(temp[i].company);
-				bill[temp[i].company] = 0;
+			if(bill.find(temp[i]->company) == bill.end()) {
+				compNames.push_back(temp[i]->company);
+				bill[temp[i]->company] = 0;
 			}
-			bill[temp[i].company] += (temp[i].hits * temp[i].bid);
+			bill[temp[i]->company] += (temp[i]->hits * temp[i]->bid);
 		}
 	}
 	AlphaStrComp struc;
