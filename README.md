@@ -21,7 +21,7 @@
 	
 ##IMPORTANT
 + Due to (presumably) the dynamic nature of USC Wireless's IP addresses, use the loopback IP (127.0.0.1) to test this program for now.
-+ Terminating the server UI does not kill the process. This is because of blocking caused by the accept() command. I've yet to find a decent workaround, so please terminate the UI and then reconnect with another client in order to properly end the server and test the ad billing feature.
++ Terminating the server UI does not kill the process. This is because of blocking caused by the accept() command. I've yet to find a decent workaround, so please terminate the UI and then attempt to connect with another client in order to properly end the server and test the ad billing feature.
 
 ##Run Instructions
 **Server Terminal**
