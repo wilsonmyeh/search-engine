@@ -20,6 +20,8 @@
 *.out
 *.app
 bin/*
+server/bin/*
+client/bin/*
 
 # Moc files
 moc_*
