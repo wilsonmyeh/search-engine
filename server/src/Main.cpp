@@ -277,15 +277,7 @@ int main(int argc, char* argv[])
 	}
 	
     calculateBill(ofile);
-
-    for(auto & it : compMap)
-    {
-    	for(auto & it2 : *it.second)
-    	{
-    		delete it2;
-    	}
-    	delete it.second;
-    }
+    
     return 0;
 }
 

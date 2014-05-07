@@ -23,7 +23,7 @@
 
 ##Run Instructions
 **Server Terminal**
-	
+
 	$ bin/server <input file> <ad data input file> <ad data billing output file>
 
 	+ Example
@@ -42,7 +42,6 @@
 	$ bin/client 127.0.0.1 31803
 	
 ##Client Interface
-	
 	To search a single word, enter the word into the "Search Word" textbox and click the "Search Word" button.
 	To search using multiple words, enter into either the "Search OR" or "Search AND" textboxes and use their associated buttons.
 
@@ -50,3 +49,6 @@
 
 	Double-click any search result to open it.
 	Single-clicking an ad creates a pop up to symbolize visiting the adsite.
+
+##Miscellaneous
+	Exiting and immediately restarting the server will likely result in a "Address already in use" error. Just wait a minute for it to free itself up.

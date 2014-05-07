@@ -61,7 +61,7 @@ int main(int argc, char* argv[])
 
 	
 	inet_ntop(p->ai_family, get_in_addr((struct sockaddr*)&p), s, sizeof s);
-	cout << "Connected to " << s;
+	cout << "Connected to " << s << endl;
 
 	freeaddrinfo(servinfo); //Connected and done!
 
